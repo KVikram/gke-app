@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gke-app
+  labels:
+    app: spring-boot
+spec:
+  selector:
+    matchLabels:
+      app: spring-boot
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: spring-boot
+    spec:
+      containers:
+        - name: gke-app
+          image: eu.gcr.io/k8-starter/gke-app:latest
+          imagePullPolicy: Always
+          readinessProbe:
+            httpGet:
+              port: 8080
+              path: /actuator/health
+            initialDelaySeconds: 200
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 10
+          livenessProbe:
+            httpGet:
+              port: 8080
+              path: /actuator/health
+            initialDelaySeconds: 200
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 10
+          ports:
+            - containerPort: 8080
+          env:
+            - name: message
+              valueFrom:
+                configMapKeyRef:
+                  name: message-config
+                  key: message
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: message-config
+data:
+  message: Hello World from GKE!
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gke-app
+spec:
+  selector:
+    app: spring-boot
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+  type: LoadBalancer
